@@ -27,6 +27,7 @@ namespace WpfApp2
         bool isDrawing = false;
         Point lastPoint;
         List<Point> runningPoints = new List<Point>();
+        int plotPointCount = 0;
 
         private Point rotatePoint(Point p, int deg, Point origin)
         {
@@ -51,6 +52,21 @@ namespace WpfApp2
 
             other2(deg);
         }
+
+        private bool IsPointInPolygon(List<Point> polygon, Point point)
+        {
+            bool isInside = false;
+            for (int i = 0, j = polygon.Count() - 1; i < polygon.Count(); j = i++)
+            {
+                if (((polygon.ElementAt(i).Y > point.Y) != (polygon.ElementAt(j).Y > point.Y)) &&
+                (point.X < (polygon.ElementAt(j).X - polygon.ElementAt(i).X) * (point.Y - polygon.ElementAt(i).Y) / (polygon.ElementAt(j).Y - polygon.ElementAt(i).Y) + polygon.ElementAt(i).X))
+                {
+                    isInside = !isInside;
+                }
+            }
+            return isInside;
+        }
+
         /*
         private void d()
         {
@@ -85,9 +101,7 @@ namespace WpfApp2
             }
         }*/
 
-        private void other2(double deg)
-        {
-            var poly = new List<Point>
+            List<Point> poly = new List<Point>
                 {
                     new Point(100,100),
                     new Point(200,100),
@@ -99,15 +113,30 @@ namespace WpfApp2
                     new Point(300,300),
                     new Point(100,300),
                     new Point(100,100),
+
+                    /*new Point(270,270),
+                    new Point(280,270),
+                    new Point(280,280),
+                    new Point(270,280),
+                    new Point(270,270),*/
+
                 };
+        private void other2(double deg)
+        {
 
             int space = 10;
-            var st = new List<Point>();
+            var ipRows = new List<List<Line>>();
+            var maxIp = 0;
+            grid.Children.Clear(); ;
+            plotPointCount = 0;
             for (int y = 0; y <= 512 - space; y += space)
             {
-                var p1 = rotatePoint(new Point(0,y), (int)deg, new Point(256,256));
-                var p2 = rotatePoint(new Point(512,y),(int)deg, new Point(256,256));
-                DrawPolygon(new List<Point> { p1, p2});
+                var p1 = rotatePoint(new Point(0, y), (int)deg, new Point(256, 256));
+                var p2 = rotatePoint(new Point(512, y), (int)deg, new Point(256, 256));
+                //DrawPolygon(new List<Point> { p1, p2 });
+
+                //var p1 = new Point(0,y);
+                //var p2 = new Point(512,y);
 
                 var l = new Line {
                     X1 = p1.X,
@@ -116,11 +145,54 @@ namespace WpfApp2
                     Y2 = p2.Y
                 };
                 var ip = IntersectPolygon(poly, l);
-                st.AddRange(ip);
+
                 PlotPoints(ip, Colors.Red);
+                //continue;
+                maxIp = Math.Max(ip.Count(), maxIp);
+                if(ip.Count() == 0)
+                {
+                    continue;
+                }
+                ipRows.Add(LinesInsidePolygon(poly, ip));
+
+                /*
+                var lines = LinesInsidePolygon(poly, ip);
+                foreach (Line li in lines)
+                {
+                    PlotPoints(new List<Point> { new Point { X = li.X1, Y = li.Y1 } }, Colors.Red);
+                    PlotPoints(new List<Point> { new Point { X = li.X2, Y = li.Y2 } }, Colors.Blue);
+                }
+                foreach(Point ppp in ip)
+                {
+                    PlotPoints(new List<Point> { ppp }, Colors.Red);
+                }*/
             }
+
+           var stitches = new List<Point>();
+            for(int i = 0; i < maxIp-1; i++)
+            {
+                foreach(List<Line> ip in ipRows)
+                {
+
+                    if(i > ip.Count() - 1)
+                    {
+                        continue;
+                    }
+
+                    var p1 = new Point { X = ip[i].X1, Y = ip[i].Y1 };
+                    var p2 = new Point { X = ip[i].X2, Y = ip[i].Y2 };
+
+                    PlotPoints(new List<Point> { p1 }, Colors.Red);
+                    PlotPoints(new List<Point> { p2 }, Colors.Blue);
+
+                    stitches.Add(p1);
+                    stitches.Add(p2);
+                }
+            }
+
+            //PlotPoints(stitches, Colors.Red);
             DrawPolygon(poly);
-            DrawPolygon(st);
+            DrawPolygon(stitches);
         }
         /*
         private void other()
@@ -221,6 +293,16 @@ namespace WpfApp2
             return points;
         }
     */
+
+        private Point Interpolate(Point p1, Point p2, double t)
+        {
+            return new Point
+            {
+                X = p1.X + (p2.X - p1.X) * t,
+                Y = p1.Y + (p2.Y - p1.Y) * t,
+            };
+        }
+
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
             isDrawing = true;
@@ -261,6 +343,10 @@ namespace WpfApp2
                 foreach (Point p in points)
                 {
                     writeableBmp.DrawEllipse((int)p.X - 2, (int)p.Y - 2, (int)p.X + 2, (int)p.Y + 2, (Color)color);
+                    //var l = new Label();
+                    //l.Content = plotPointCount++;
+                    //l.Margin = new Thickness(Math.Round(p.X),Math.Round(p.Y) - 15,0,0);
+                    //grid.Children.Add(l);
                 }
             }
         }
@@ -304,6 +390,42 @@ namespace WpfApp2
                     }
                 }
                 lp = p;
+            }
+            return (List<Point>)l.OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
+        }
+
+        public List<Line> LinesInsidePolygon(List<Point> polygon, List<Point>points) {
+            var l = new List<Line>();
+            int i = 0;
+
+            while (i < points.Count())
+            {
+                var p1 = points.ElementAt(i);
+                Point p2;
+                try
+                {
+                    p2 = points.ElementAt(i + 1);
+                }
+                catch (ArgumentOutOfRangeException ex)
+                {
+                    break;
+                }
+                var p = Interpolate(p1, p2, 0.5);
+                //PlotPoints(new List<Point> { p},Colors.Green);
+                if (IsPointInPolygon(polygon,p))
+                {
+                    l.Add(new Line {
+                        X1 = p1.X,
+                        Y1 = p1.Y,
+                        X2 = p2.X,
+                        Y2 = p2.Y
+                    });
+                    i += 2;
+                }
+                else
+                {
+                    i++;
+                }
             }
             return l;
         }
