@@ -24,10 +24,31 @@ namespace WpfApp2
     public partial class MainWindow : Window
     {
         WriteableBitmap writeableBmp;
-        bool isDrawing = false;
+        bool isDrawing = true;
         Point lastPoint;
         List<Point> runningPoints = new List<Point>();
         int plotPointCount = 0;
+        List<Point> poly = new List<Point> {
+
+                    /*
+                    new Point(100,100),
+                    new Point(200,100),
+                    new Point(200,120),
+                    new Point(120,280),
+                    new Point(250,160),
+                    new Point(250,100),
+                    new Point(300,100),
+                    new Point(300,300),
+                    new Point(100,300),
+                    new Point(100,100),
+
+                    new Point(270,270),
+                    new Point(280,270),
+                    new Point(280,280),
+                    new Point(270,280),
+                    new Point(270,270),*/
+
+                };
 
         private Point rotatePoint(Point p, int deg, Point origin)
         {
@@ -47,10 +68,11 @@ namespace WpfApp2
 
             writeableBmp = BitmapFactory.New(512, 512);
             image.Source = writeableBmp;
-
+            int i = 0;
+            DrawPolygon(poly);
             //d();
 
-            other2(deg);
+            //other2(deg);
         }
 
         private bool IsPointInPolygon(List<Point> polygon, Point point)
@@ -101,26 +123,6 @@ namespace WpfApp2
             }
         }*/
 
-            List<Point> poly = new List<Point>
-                {
-                    new Point(100,100),
-                    new Point(200,100),
-                    new Point(200,120),
-                    new Point(120,280),
-                    new Point(250,160),
-                    new Point(250,100),
-                    new Point(300,100),
-                    new Point(300,300),
-                    new Point(100,300),
-                    new Point(100,100),
-
-                    /*new Point(270,270),
-                    new Point(280,270),
-                    new Point(280,280),
-                    new Point(270,280),
-                    new Point(270,270),*/
-
-                };
         private void other2(double deg)
         {
 
@@ -306,9 +308,9 @@ namespace WpfApp2
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
             isDrawing = true;
-            //lastPoint = e.GetPosition(image);
-            lastPoint = new Point(256, 256);
-            runningPoints.Add(lastPoint);
+            lastPoint = e.GetPosition(image);
+            //lastPoint = new Point(256, 256);
+            poly.Add(lastPoint);
         }
 
         private void Grid_MouseMove(object sender, MouseEventArgs e)
